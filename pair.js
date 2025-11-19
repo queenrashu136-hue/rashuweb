@@ -1,14 +1,7 @@
 import express from 'express';
 import fs from 'fs';
 import pino from 'pino';
-import {
-    makeWASocket,
-    useMultiFileAuthState,
-    delay,
-    makeCacheableSignalKeyStore,
-    Browsers,
-    jidNormalizedUser
-} from '@whiskeysockets/baileys';
+import { makeWASocket, useMultiFileAuthState, delay, makeCacheableSignalKeyStore, Browsers, jidNormalizedUser } from 'baileys';
 import { upload } from './mega.js';
 
 const router = express.Router();
@@ -25,93 +18,77 @@ function removeFile(FilePath) {
 router.get('/', async (req, res) => {
     let num = req.query.number;
     let dirs = './' + (num || `session`);
+    
    
     await removeFile(dirs);
-
+    
     async function initiateSession() {
         const { state, saveCreds } = await useMultiFileAuthState(dirs);
 
         try {
-            let conn = makeWASocket({
+            let SUPUNMDInc = makeWASocket({
                 auth: {
                     creds: state.creds,
-                    keys: makeCacheableSignalKeyStore(
-                        state.keys,
-                        pino({ level: "fatal" }).child({ level: "fatal" })
-                    ),
+                    keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
                 },
                 printQRInTerminal: false,
                 logger: pino({ level: "fatal" }).child({ level: "fatal" }),
-                browser: Browsers.macOS('Safari')
+                browser: ["Ubuntu", "Chrome", "20.0.04"],
             });
 
-            if (!conn.authState.creds.registered) {
+            if (!SUPUNMDInc.authState.creds.registered) {
                 await delay(2000);
                 num = num.replace(/[^0-9]/g, '');
-                const code = await conn.requestPairingCode(num);
-
+                const code = await SUPUNMDInc.requestPairingCode(num);
                 if (!res.headersSent) {
                     console.log({ num, code });
-                    return res.send({ code });
+                    await res.send({ code });
                 }
             }
 
-            conn.ev.on('creds.update', saveCreds);
-
-            conn.ev.on("connection.update", async (update) => {
-                const { connection, lastDisconnect } = update;
+            SUPUNMDInc.ev.on('creds.update', saveCreds);
+            SUPUNMDInc.ev.on("connection.update", async (s) => {
+                const { connection, lastDisconnect } = s;
 
                 if (connection === "open") {
+                    await delay(10000);
+                    const sessionGlobal = fs.readFileSync(dirs + '/creds.json');
 
-                    await delay(5000);
-
-                    function randomID(len = 6, nlen = 4) {
-                        const abc = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-                        let txt = '';
-                        for (let i = 0; i < len; i++) txt += abc[Math.floor(Math.random() * abc.length)];
-                        const num = Math.floor(Math.random() * Math.pow(10, nlen));
-                        return `${txt}${num}`;
+                  
+                    function generateRandomId(length = 6, numberLength = 4) {
+                        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                        let result = '';
+                        for (let i = 0; i < length; i++) {
+                            result += characters.charAt(Math.floor(Math.random() * characters.length));
+                        }
+                        const number = Math.floor(Math.random() * Math.pow(10, numberLength));
+                        return `${result}${number}`;
                     }
 
-                    const sessionFile = `${dirs}/creds.json`;
-                    const megaUrl = await upload(fs.createReadStream(sessionFile), `${randomID()}.json`);
+              
+                    const megaUrl = await upload(fs.createReadStream(`${dirs}/creds.json`), `${generateRandomId()}.json`);
+                    let stringSession = megaUrl.replace('https://mega.nz/file/', ''); // Extract session ID from URL
+                    stringSession = 'RASHU-MD=' + stringSession;  // ඔයාගේ session id එකට ඉස්සරහින් යන්න ඕන එක උදා- CYBER-FREEDOM=wyd1nJIQ#oxu9XAWC09MfWRLHm8fxFVXWfgc8nWiEZXRvtaYU6Ds
 
-                    let stringSession = megaUrl.replace('https://mega.nz/file/', '');
-                    stringSession = 'RASHU-MD=' + stringSession;
-
+                  
                     const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
+                    await SUPUNMDInc.sendMessage(userJid, { text: stringSession });
 
-                    await conn.sendMessage(userJid, { text: stringSession });
-
-                    await conn.sendMessage(userJid, {
-                        text: "*🪄 𝐐𝐔𝐄𝐄𝐍 𝐑𝐀𝐒𝐇𝐔 𝐌𝐃 New Update 💐*\n\n" +
-                            "*SESSION SUCCESSFUL ✅*\n" +
-                            "මෙ Session ID එක *කාටවත් දෙන්න එපා!* 😩💐\n\n" +
-                            "┉┉┉┉┉┉┉┉[ ❤️‍🩹 ]┉┉┉┉┉┉┉┉\n" +
-                            "*📌 WhatsApp Group*\nhttps://chat.whatsapp.com/GGwN8bjWtCDKrm7kuNCcnd\n\n" +
-                            "*📌 WhatsApp Channel*\nhttps://whatsapp.com/channel/0029VaicB1MISTkGyQ7Bqe23\n\n" +
-                            "*📌 RASHU Contact*\nwa.me/94727319036\n\n" +
-                            "> Powered By QUEEN RASHU MD 🫟"
-                    });
-
-                    await delay(300);
+                    // ඔයාට ඕන මැසේජ් එක දාන්න
+                    await SUPUNMDInc.sendMessage(userJid, { text: "*🪄 𝐐𝐔𝐄𝐄𝐍 𝐑𝐀𝐒𝐇𝐔 𝐌𝐃 New Update.....💐*\n\n* SESION SUCCESSFUL ✅\n\n*උඩ ආපු Sesion Id එක ශෙයා කරන්න එපා හොදද 😩🪄💐*\n\n+ ┉┉┉┉┉┉┉┉[ ❤️‍🩹 ]┉┉┉┉┉┉┉┉ +\n*❗𝐖𝐇𝐀𝐓𝐒𝐀𝐏𝐏 𝐆𝐑𝐎𝐔𝐏*\n* https://chat.whatsapp.com/GGwN8bjWtCDKrm7kuNCcnd\n\n*❗𝐖𝐇𝐀𝐓𝐒𝐀𝐏𝐏 𝐂𝐇𝐀𝐍𝐍𝐄𝐋*\n* https://whatsapp.com/channel/0029VaicB1MISTkGyQ7Bqe23\n\n*❗𝐑𝐀𝐒𝐇𝐔 𝐂𝐎𝐍𝐓𝐀𝐂𝐓*\n* wa.me/94727319036\n\n\n> 𝙿𝙾𝚆𝙴𝚁𝙳 𝙱𝚈 𝐐𝐔𝐄𝐄𝐍 𝐑𝐀𝐒𝐇𝐔 𝐌𝐃 𝙾𝙵𝙲 🫟" });
+                    
+                    // Clean up session after use
+                    await delay(100);
                     removeFile(dirs);
                     process.exit(0);
-                }
-
-                else if (connection === "close" &&
-                    lastDisconnect &&
-                    lastDisconnect.error &&
-                    lastDisconnect.error.output?.statusCode !== 401
-                ) {
-                    console.log("Reconnecting...");
-                    await delay(5000);
-                    initiateSession();
+                } else if (connection === 'close' && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
+                    console.log('Connection closed unexpectedly:', lastDisconnect.error);
+                    await delay(10000);
+                    initiateSession(); // Retry session initiation if needed
                 }
             });
-
         } catch (err) {
-            console.error("Error:", err);
+            console.error('Error initializing session:', err);
             if (!res.headersSent) {
                 res.status(503).send({ code: 'Service Unavailable' });
             }
