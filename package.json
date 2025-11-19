@@ -17,7 +17,7 @@
   "license": "ISC",
   "description": "Rashu md pair",
   "dependencies": {
-    "@yaoii-bails/baileys": "^1.0.0",
+    "@whiskeysockets/baileys": "github:TeddyHost/WaBail",
     "sharp": "^0.34.2",
      "jimp": "^0.16.1",
     "qrcode": "^1.5.4",
