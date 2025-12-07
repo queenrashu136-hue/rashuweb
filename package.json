@@ -17,7 +17,7 @@
   "license": "ISC",
   "description": "Rashu md pair",
   "dependencies": {
-"baileys":  "npm:@elrayyxml/baileys",
+    "baileys":  "github:kiuur/baileys",
     "sharp": "^0.34.2",
      "jimp": "^0.16.1",
     "qrcode": "^1.5.4",
