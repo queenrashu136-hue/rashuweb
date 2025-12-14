@@ -1,106 +1,107 @@
-import express from 'express';
-import fs from 'fs';
-import pino from 'pino';
-import { makeWASocket, useMultiFileAuthState, delay, makeCacheableSignalKeyStore, Browsers, jidNormalizedUser } from 'baileys';
-import { upload } from './mega.js';
+import express from 'express'
+import fs from 'fs'
+import pino from 'pino'
+import {
+  makeWASocket,
+  useMultiFileAuthState,
+  delay,
+  jidNormalizedUser,
+  fetchLatestBaileysVersion
+} from 'baileys'
+import { upload } from './mega.js'
 
-const router = express.Router();
+const router = express.Router()
 
-function removeFile(FilePath) {
-    try {
-        if (!fs.existsSync(FilePath)) return false;
-        fs.rmSync(FilePath, { recursive: true, force: true });
-    } catch (e) {
-        console.error('Error removing file:', e);
+function removeFile(path) {
+  try {
+    if (fs.existsSync(path)) {
+      fs.rmSync(path, { recursive: true, force: true })
     }
+  } catch (e) {
+    console.error('Remove error:', e)
+  }
 }
 
 router.get('/', async (req, res) => {
-    let num = req.query.number;
-    let dirs = './' + (num || `session`);
-    
-   
-    await removeFile(dirs);
-    
-    async function initiateSession() {
-        const { state, saveCreds } = await useMultiFileAuthState(dirs);
+  let num = req.query.number
 
-        try {
-            
-const SUPUNMDInc = makeWASocket({
-      auth: state,
-      printQRInTerminal: false,
-      logger: pino({ level: "silent" }),
-      version,
-      syncFullHistory: true,
-      markOnlineOnConnect: true,
-      generateHighQualityLinkPreview: true
-    });
+  if (!num) {
+    return res.status(400).json({ error: 'Number is required' })
+  }
 
-            if (!SUPUNMDInc.authState.creds.registered) {
-                await delay(2000);
-                num = num.replace(/[^0-9]/g, '');
-                const code = await SUPUNMDInc.requestPairingCode(num);
-                if (!res.headersSent) {
-                    console.log({ num, code });
-                    await res.send({ code });
-                }
-            }
+  num = num.replace(/[^0-9]/g, '')
+  const sessionDir = `./session_${num}`
 
-            SUPUNMDInc.ev.on('creds.update', saveCreds);
-            SUPUNMDInc.ev.on("connection.update", async (s) => {
-                const { connection, lastDisconnect } = s;
+  removeFile(sessionDir)
 
-                if (connection === "open") {
-                    await delay(10000);
-                    const sessionGlobal = fs.readFileSync(dirs + '/creds.json');
+  async function initiateSession() {
+    try {
+      const { state, saveCreds } = await useMultiFileAuthState(sessionDir)
+      const { version } = await fetchLatestBaileysVersion() // ✅ FIX
 
-                  
-                    function generateRandomId(length = 6, numberLength = 4) {
-                        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-                        let result = '';
-                        for (let i = 0; i < length; i++) {
-                            result += characters.charAt(Math.floor(Math.random() * characters.length));
-                        }
-                        const number = Math.floor(Math.random() * Math.pow(10, numberLength));
-                        return `${result}${number}`;
-                    }
+      const sock = makeWASocket({
+        auth: state,
+        version,
+        logger: pino({ level: 'silent' }),
+        printQRInTerminal: false,
+        markOnlineOnConnect: true
+      })
 
-              
-                    const megaUrl = await upload(fs.createReadStream(`${dirs}/creds.json`), `${generateRandomId()}.json`);
-                    let stringSession = megaUrl.replace('https://mega.nz/file/', ''); // Extract session ID from URL
-                    stringSession = 'RASHU-MD=' + stringSession;  // ඔයාගේ session id එකට ඉස්සරහින් යන්න ඕන එක උදා- CYBER-FREEDOM=wyd1nJIQ#oxu9XAWC09MfWRLHm8fxFVXWfgc8nWiEZXRvtaYU6Ds
+      if (!sock.authState.creds.registered) {
+        await delay(1500)
+        const code = await sock.requestPairingCode(num)
 
-                  
-                    const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
-                    await SUPUNMDInc.sendMessage(userJid, { text: stringSession });
-
-                    // ඔයාට ඕන මැසේජ් එක දාන්න
-                    await SUPUNMDInc.sendMessage(userJid, { text: "*🪄 𝐐𝐔𝐄𝐄𝐍 𝐑𝐀𝐒𝐇𝐔 𝐌𝐃 New Update.....💐*\n\n* SESION SUCCESSFUL ✅\n\n*උඩ ආපු Sesion Id එක ශෙයා කරන්න එපා හොදද 😩🪄💐*\n\n+ ┉┉┉┉┉┉┉┉[ ❤️‍🩹 ]┉┉┉┉┉┉┉┉ +\n*❗𝐖𝐇𝐀𝐓𝐒𝐀𝐏𝐏 𝐆𝐑𝐎𝐔𝐏*\n* https://chat.whatsapp.com/GGwN8bjWtCDKrm7kuNCcnd\n\n*❗𝐖𝐇𝐀𝐓𝐒𝐀𝐏𝐏 𝐂𝐇𝐀𝐍𝐍𝐄𝐋*\n* https://whatsapp.com/channel/0029VaicB1MISTkGyQ7Bqe23\n\n*❗𝐑𝐀𝐒𝐇𝐔 𝐂𝐎𝐍𝐓𝐀𝐂𝐓*\n* wa.me/94727319036\n\n\n> 𝙿𝙾𝚆𝙴𝚁𝙳 𝙱𝚈 𝐐𝐔𝐄𝐄𝐍 𝐑𝐀𝐒𝐇𝐔 𝐌𝐃 𝙾𝙵𝙲 🫟" });
-                    
-                    // Clean up session after use
-                    await delay(100);
-                    removeFile(dirs);
-                    process.exit(0);
-                } else if (connection === 'close' && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode !== 401) {
-                    console.log('Connection closed unexpectedly:', lastDisconnect.error);
-                    await delay(10000);
-                    initiateSession(); // Retry session initiation if needed
-                }
-            });
-        } catch (err) {
-            console.error('Error initializing session:', err);
-            if (!res.headersSent) {
-                res.status(503).send({ code: 'Service Unavailable' });
-            }
+        if (!res.headersSent) {
+          return res.json({ code })
         }
+      }
+
+      sock.ev.on('creds.update', saveCreds)
+
+      sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
+        if (connection === 'open') {
+          await delay(5000)
+
+          const megaUrl = await upload(
+            fs.createReadStream(`${sessionDir}/creds.json`),
+            `session_${Date.now()}.json`
+          )
+
+          const sessionId =
+            'RASHU-MD=' + megaUrl.replace('https://mega.nz/file/', '')
+
+          const userJid = jidNormalizedUser(num + '@s.whatsapp.net')
+
+          await sock.sendMessage(userJid, { text: sessionId })
+          await sock.sendMessage(userJid, {
+            text:
+              '*🪄 QUEEN RASHU MD 🪄*\n\n' +
+              'SESSION SUCCESSFUL ✅\n\n' +
+              'Session ID එක share කරන්න එපා ❗\n\n' +
+              '> POWERED BY QUEEN RASHU MD'
+          })
+
+          await delay(200)
+          removeFile(sessionDir)
+        }
+
+        if (
+          connection === 'close' &&
+          lastDisconnect?.error?.output?.statusCode !== 401
+        ) {
+          await delay(5000)
+          initiateSession()
+        }
+      })
+    } catch (err) {
+      console.error('Session error:', err)
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Server error' })
+      }
     }
+  }
 
-    await initiateSession();
-});
+  initiateSession()
+})
 
-process.on('uncaughtException', (err) => {
-    console.log('Caught exception: ' + err);
-});
-
-export default router;
+export default router
